@@ -23,7 +23,7 @@ Component({
             }
           } else {
             if (newVal && newVal.mode !== 'same') {
-              this.triggerEvent('getImage', {errMsg: 'canvasdrawer:samme params'})
+              this.triggerEvent('getImage', {errMsg: 'xcxCanvas:samme params'})
             }
           }
         }
@@ -40,9 +40,9 @@ Component({
   ctx: null,
   cache: {},
   ready () {
-    wx.removeStorageSync('canvasdrawer_pic_cache');
-    this.cache = wx.getStorageSync('canvasdrawer_pic_cache') || {};
-    this.ctx = wx.createCanvasContext('canvasdrawer', this);
+    wx.removeStorageSync('xcxCanvas_pic_cache');
+    this.cache = wx.getStorageSync('xcxCanvas_pic_cache') || {};
+    this.ctx = wx.createCanvasContext('xcxCanvas', this);
     this.parent = getCurrentPages()[getCurrentPages().length-1];
     this.canDraw = false;
     let system = wx.getSystemInfoSync().system;
