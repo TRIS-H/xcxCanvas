@@ -88,7 +88,7 @@
 | borderRadius    | 图片圆角                                             | 0      |        |
 
 ### text（文本）
-**注意：getTextHeight为true的文本对应的wxml中的text组件，必须加上 `style="height:{{textHeightObj['desc-content']}}px"`.**
+**注意：getTextHeight为true的文本对应的wxml中的text组件，假设传递的className的独有值为'my-content', 必须加上 `style="height:{{textHeightObj['my-content']}}px"`.**
 
 | 属性            | 含义                                                         | 默认值         | 可选值                                      |
 | --------------- | ------------------------------------------------------------ | -------------- | ------------------------------------------- |
