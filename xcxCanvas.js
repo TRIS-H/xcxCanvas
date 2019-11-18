@@ -322,7 +322,12 @@ Component({
       // !this.canDraw && console.log('MaxLineNumber :', MaxLineNumber);
 
       this.ctx.beginPath()
-      this.ctx.setTextBaseline('top')
+      this.ctx.setTextBaseline('top');
+      if (bolder) {
+        this.ctx.font = `normal bold ${fontSize}px sans-serif`;
+      } else {
+        this.ctx.setFontSize(fontSize);
+      }
       this.ctx.setTextAlign(textAlign)
       this.ctx.setFillStyle(color);
       this.ctx.setFontSize(fontSize);
@@ -398,15 +403,15 @@ Component({
       
       this.ctx.restore()
 
-      if (bolder) {
-        this.drawText({
-          ...params,
-          left: left + 0.3,
-          top: top + 0.3,
-          bolder: false,
-          textDecoration: 'none' 
-        })
-      }
+//       if (bolder) {
+//         this.drawText({
+//           ...params,
+//           left: left + 0.3,
+//           top: top + 0.3,
+//           bolder: false,
+//           textDecoration: 'none' 
+//         })
+//       }
     },
 
     returnHeightList () {
@@ -615,6 +620,7 @@ Component({
         paddingLeft = 0,
         paddingRight = 0,
         paddingTop = 0,
+        bolder = false,
         paddingBottom = 0,
       } = params;
       var { width, height, top, left } = await _getDomInfo(className);
@@ -631,6 +637,7 @@ Component({
         className,
         width,
         height,
+        bolder,
         backgroundColor,
         paddingLeft,
         paddingRight,
