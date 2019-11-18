@@ -88,16 +88,13 @@
 | borderRadius    | 图片圆角                                             | 0      |        |
 
 ### text（文本）
-**注意：getTextHeight为true的文本对应的wxml中的text组件，假设传递的className的独有值为'my-content', 必须加上 `style="height:{{textHeightObj['my-content']}}px"`.**
 
 | 属性            | 含义                                                         | 默认值         | 可选值                                      |
 | --------------- | ------------------------------------------------------------ | -------------- | ------------------------------------------- |
 | type(必传)      | 类型                                                         | text           |                                             |
 | className(必传) | wxml中该text组件的独有类名                                   |                |                                             |
-| content(必传)   | 绘制文本                                                     | ''（空字符串） |
-      |
-| bolder          | 字体加粗                                                     | false         |
-      |
+| content(必传)   | 绘制文本                                                     | ''（空字符串） |                                             |
+| bolder          | 字体加粗                                                     | false          |                                             |
 | color           | 颜色                                                         | black          |                                             |
 | backgroundColor | 背景色                                                       | transparent    |                                             |
 | getTextHeight   | 是否需要换行（换行要调整文本行高）                           | true           | false                                       |
