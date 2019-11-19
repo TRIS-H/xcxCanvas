@@ -1,5 +1,6 @@
+/* global Component wx */
 function _getDomInfo (selector) {
-  return new Promise(resolve => {
+  return new Promise((resolve, reject) => {
     wx.createSelectorQuery().select(selector).boundingClientRect(function(res){
       resolve(res)
     }).exec()
@@ -7,10 +8,13 @@ function _getDomInfo (selector) {
 }
 
 function _promise (success) {
-  return new Promise(resolve => resolve(success))
+  return new Promise((resolve) => resolve(success))
 }
 
 Component({
+  options: {
+    addGlobalClass: true
+  },
   properties: {
     painting: {
       type: Object,
@@ -28,32 +32,80 @@ Component({
           }
         }
       }
-    }
+    },
+    //是否有保存按钮
+    hasSaveButton: {
+      type: Boolean,
+      value: true,
+    },
+    //保存按钮的样式
+    buttonStyle: {
+      type: Object,
+      value: {},
+    },
+    contentStyle: {
+      type: Object,
+      value: {},
+    },
+    //提示框标题的样式
+    promptStyle: {
+      type: Object,
+      value: {},
+    },
+    //提示框确定按钮的样式
+    confirmStyle: {
+      type: Object,
+      value: {},
+    },
   },
   data: {
     showCanvas: false,
     width: 100,
     height: 100,
+
     tempFileList: [],
     isPainting: false
   },
   ctx: null,
   cache: {},
   ready () {
-    wx.removeStorageSync('xcxCanvas_pic_cache');
-    this.cache = wx.getStorageSync('xcxCanvas_pic_cache') || {};
-    this.ctx = wx.createCanvasContext('xcxCanvas', this);
+    wx.showLoading({
+      title: '生成海报中',
+      mask: true
+    })
+    let that = this;
+    wx.getSetting({
+      success (res) {
+        let obj = res.authSetting;
+
+        that.isRefused = (Object.keys(obj).length > 0 && obj['scope.writePhotosAlbum'] == false) ? true : false;
+        that.setData({
+          isRefused: that.isRefused
+        })
+      }
+    });
+
+    wx.removeStorageSync('xcxCanvas_pic_cache')
+    this.cache = wx.getStorageSync('xcxCanvas_pic_cache') || {}
+    this.ctx = wx.createCanvasContext('xcxCanvas', this)
     this.parent = getCurrentPages()[getCurrentPages().length-1];
     this.canDraw = false;
     let system = wx.getSystemInfoSync().system;
     this.isIOS = !!(/ios/i.test(system));
-  },
-  lifetimes: {
-    detached: function() {
-      clearTimeout(this._time);
-      clearTimeout(this._timer);
-      clearInterval(this._inter)
-    },
+
+    wx.getSetting({
+      success (res) {
+        let obj = res.authSetting;
+        that.isRefused = (Object.keys(obj).length > 0 && obj['scope.writePhotosAlbum'] == false) ? true : false;
+        that.canSave = (Object.keys(obj).length > 0 && obj['scope.writePhotosAlbum'] == true) ? true : false;
+        console.log('保存图片的权限是否被禁止 :', that.isRefused);
+        console.log('是否开启保存图片权限 :', that.canSave);
+        that.setData({
+          isRefused: that.isRefused,
+          canSave: that.canSave
+        })
+      }
+    })
   },
   methods: {
     tomMatchType (item) {
@@ -79,14 +131,16 @@ Component({
         isPainting: true
       })
       let {
-        fontSize = 13,
-        lineHeight = 23,
+        fontSize = null,
+        lineHeight = null,
         views,
-        getTextHeight = true,
+        getTextHeight = false,
       } = this.data.painting;
       !getTextHeight && (this.canDraw = true);
+
       this.fontSize = fontSize;
       this.lineHeight = lineHeight;
+      console.log('fontSize--- :', fontSize);
 
       if (!this.canDraw) {
         //注意：有换行文本,需要获取文本高度
@@ -109,11 +163,14 @@ Component({
       let {
         fontSize = 13,
         lineHeight = 23,
-        getTextHeight = true,
+        getTextHeight = false,
       } = this.data.painting;
-      Promise.all(views.map(item => this.tomMatchType(item)))
+      Promise.all(
+        views.map(item => this.tomMatchType(item))
+      )
       .then((list) => {
-        !this.canDraw && (this.textList = list.slice(1));
+        !this.canDraw && (this.textList = list.slice(1))
+        console.log('list :', list);
         this.painting = {
           width: list[0].width,
           height: list[0].height,
@@ -127,14 +184,18 @@ Component({
     },
 
     readyPigment () {
-      var { width, height } = this.painting.views[0];
+      const { 
+        views,
+      } = this.painting;
+      var { width, height } = views[0];
       this.setData({
         width,
         height
       })
-      this._inter = setInterval(() => {
+
+      const inter = setInterval(() => {
         if (this.ctx) {
-          clearInterval(this._inter)
+          clearInterval(inter)
           this.ctx.clearActions()
           this.ctx.save()
           this.canDraw ? this.getImagesInfo(views) : this.startGetHeight()
@@ -150,8 +211,8 @@ Component({
             imageList.push(this.getImageInfo(views[i].url))
           }
         }
-
-        const loadTask = [];
+  
+        const loadTask = []
         for (let i = 0; i < Math.ceil(imageList.length / 8); i++) {
           loadTask.push(new Promise((resolve, reject) => {
             Promise.all(imageList.splice(i * 8, 8)).then(res => {
@@ -179,7 +240,7 @@ Component({
           title: '提示',
           content: '当前微信版本过低，无法使用 measureText 功能，请升级到最新微信版本后重试。'
         })
-        this.triggerEvent('getImage', {errMsg: 'canvasdrawer:version too low'})
+        this.triggerEvent('getImage', {errMsg: 'xcxCanvas:version too low'})
         return
       }
       
@@ -212,7 +273,7 @@ Component({
               title: '提示',
               content: '当前微信版本过低，无法使用 measureText 功能，请升级到最新微信版本后重试。'
             })
-            this.triggerEvent('getImage', {errMsg: 'canvasdrawer:version too low'})
+            this.triggerEvent('getImage', {errMsg: 'xcxCanvas:version too low'})
             return
           } else {
             this.drawText({ ...views[i] })
@@ -226,12 +287,12 @@ Component({
 
       if (this.canDraw) {
         this.ctx.draw(false, () => {
-          wx.setStorageSync('canvasdrawer_pic_cache', this.cache)
+          wx.setStorageSync('xcxCanvas_pic_cache', this.cache)
           if (this.isIOS) {
             this.saveImageToLocal()
           } else {
             // 延迟保存图片，解决安卓生成图片错位bug。
-            this._timer = setTimeout(() => {
+            setTimeout(() => {
               this.saveImageToLocal()
             }, 800)
           }
@@ -291,6 +352,7 @@ Component({
       this.ctx.save()
       var {
         MaxLineNumber = 9999,
+        breakWord = false,
         color = 'black',
         content = '',
         fontSize = this.fontSize,
@@ -319,29 +381,34 @@ Component({
       width = width - paddingLeft - paddingRight;
       lineHeight = lineHeight ? lineHeight : (this.lineHeight || 23);
       fontSize = fontSize ? fontSize : (this.fontSize || 13);
-      // !this.canDraw && console.log('MaxLineNumber :', MaxLineNumber);
+      !this.canDraw && console.log('MaxLineNumber :', MaxLineNumber);
 
       this.ctx.beginPath()
-      this.ctx.setTextBaseline('top');
+      this.ctx.setTextBaseline('top')
       if (bolder) {
         this.ctx.font = `normal bold ${fontSize}px sans-serif`;
       } else {
         this.ctx.setFontSize(fontSize);
       }
-      this.ctx.setTextAlign(textAlign)
+      this.ctx.setTextAlign(textAlign);
       this.ctx.setFillStyle(color);
-      this.ctx.setFontSize(fontSize);
-
+      // if (!breakWord) {
+      //   this.ctx.fillText(content, left, top);
+      //   this.drawTextLine(left, top, textDecoration, color, fontSize, content);
+      // } else {
         let fillText = '';
         let fillTop = top + (lineHeight - fontSize)/2;
         let lineNum = 1;
 
+        !this.canDraw && console.log('width :', width);
         let actualWidth = this.isIOS ? width: Math.ceil(375 * width / this.data.width);
+        !this.canDraw && console.log('actualWidth :', actualWidth);
         for (let i = 0; i < content.length; i++) {
           let nextText = fillText + [content[i]];
           let nextWidth = this.ctx.measureText(nextText).width;
           let nowWidth = this.ctx.measureText(fillText).width;
           if (nextWidth > (actualWidth) || content.charCodeAt(i) === 10) {
+            !this.canDraw && console.log('nextWidth:', nextWidth, 'nowWidth:', nowWidth);
             if (lineNum === MaxLineNumber) {
                 let omitText = fillText + '...';
                 let omitWidth = this.ctx.measureText(omitText).width;
@@ -372,17 +439,17 @@ Component({
             }
             if (nextWidth > (actualWidth) && content.charCodeAt(i) === 10) {
               //ios实测一例，content.charCodeAt(i) === 10时不占宽度，即不存在此情况，安卓未知
-              // console.log('换行+超出宽度')
+              console.log('换行+超出宽度')
             }
             fillText = (content.charCodeAt(i) === 10)? '': content[i];
             if (!(
               (i == content.length - 1) && (fillText == '' || content.charCodeAt(i) === 32)
               )) {
               //如果是最后一个字符且是(换行/空格)字符，则忽略
-              fillTop += lineHeight;
-              lineNum++;
+              fillTop += lineHeight
+              lineNum++
             } else {
-              // console.log(fillText == ''? '最后一个字符是换行字符': '最后一个字符是空格字符');
+              console.log(fillText == ''? '最后一个字符是换行字符': '最后一个字符是空格字符');
             }
           } else {
             fillText += [content[i]]
@@ -394,24 +461,25 @@ Component({
           this.textHeightObj[textClass] = lineNum*lineHeight + paddingBottom + paddingTop;
           if (Object.keys(this.textHeightObj).length == this.textCount) {
             // console.log("ok", this.textHeightObj);
-            this.returnHeightList();
+            this.returnHeightList()
           }
         } else {
           this.ctx.fillText(fillText, left, fillTop);
           this.drawTextLine(left, fillTop, textDecoration, color, fontSize, fillText)
         }
+      // }
       
       this.ctx.restore()
 
-//       if (bolder) {
-//         this.drawText({
-//           ...params,
-//           left: left + 0.3,
-//           top: top + 0.3,
-//           bolder: false,
-//           textDecoration: 'none' 
-//         })
-//       }
+      // if (bolder) {
+      //   this.drawText({
+      //     ...params,
+      //     left: left + 0.3,
+      //     top: top + 0.3,
+      //     bolder: false,
+      //     textDecoration: 'none' 
+      //   })
+      // }
     },
 
     returnHeightList () {
@@ -457,6 +525,7 @@ Component({
     drawRect (params) {
       this.ctx.save()
       const { background, top = 0, left = 0, width = 0, height = 0 } = params
+      console.log('background :', background);
       this.ctx.setFillStyle(background)
       this.ctx.fillRect(left, top, width, height)
       this.ctx.restore()
@@ -492,7 +561,7 @@ Component({
                   this.cache[url] = res.path
                   resolve(res.path)
                 } else {
-                  this.triggerEvent('getImage', {errMsg: 'canvasdrawer:download fail'})
+                  this.triggerEvent('getImage', {errMsg: 'xcxCanvas:download fail'})
                   reject(new Error('getImageInfo fail'))
                 }
               }
@@ -512,7 +581,7 @@ Component({
         y: 0,
         width,
         height,
-        canvasId: 'canvasdrawer',
+        canvasId: 'xcxCanvas',
         complete: res => {
           console.log('ressaveImageToLocal :', res);
           if (res.errMsg === 'canvasToTempFilePath:ok') {
@@ -523,13 +592,20 @@ Component({
             })
             this.canDraw = false;
             this.painting = {};
-            this.triggerEvent('getImage', {tempFilePath: res.tempFilePath, errMsg: 'canvasdrawer:ok'})
+            this.triggerEvent('getImage', {tempFilePath: res.tempFilePath, errMsg: 'xcxCanvas:ok'})
+            this.setData({
+              posterImage: res.tempFilePath,
+            }, () => {
+              console.log('结束');
+              wx.hideLoading()
+            })
           } else {
-            this.triggerEvent('getImage', {errMsg: 'canvasdrawer:fail'})
+            this.triggerEvent('getImage', {errMsg: 'xcxCanvas:fail'})
           }
         }
       }, this)
     },
+
 
     async getRect (params) {
       let {
@@ -623,6 +699,7 @@ Component({
         bolder = false,
         paddingBottom = 0,
       } = params;
+      console.log('bolder :', bolder);
       var { width, height, top, left } = await _getDomInfo(className);
       return {
         type: 'text',
@@ -637,15 +714,84 @@ Component({
         className,
         width,
         height,
-        bolder,
         backgroundColor,
         paddingLeft,
+        bolder,
         paddingRight,
         paddingTop,
         paddingBottom,
         color: color ? color : '#000',
+        breakWord: true,
       }
     },
-  }
+
+    //
+    
+    previewImg () {
+      wx.previewImage({
+        current: this.data.posterImage, // 当前显示图片的http链接
+        urls: [this.data.posterImage] // 需要预览的图片http链接列表
+      })
+    },
+
+    openSetting () {
+      let that = this;
+      wx.openSetting({
+        success (res) {
+          console.log("res", res.authSetting)
+          that.setData({
+            isRefused: !res.authSetting['scope.writePhotosAlbum'],
+            canSave: res.authSetting['scope.writePhotosAlbum'],  //拒绝后下次也能保存图片
+          })
+        },
+        complete () {
+          that.setData({
+            isOpenSetting: false
+          })
+        }
+      })
+    },
+
+    cancel () {
+      this.setData({
+        isOpenSetting: false
+      })
+    },
+
+    savePoster () {
+      if (!this.data.canSave && this.data.isRefused) {
+        this.setData({
+          isOpenSetting: true
+        }, () => {
+          console.log('this.data.isOpenSetting :', this.data.isOpenSetting);
+        })
+        return
+      }
+      let that = this;
+      wx.saveImageToPhotosAlbum({
+        filePath: this.data.posterImage,
+        success: () => {
+          wx.showToast({
+            title: '保存成功'
+          })
+        },
+        fail: (e) => {
+          console.log('e :', e);
+          that.setData({
+            isRefused: true,
+          })
+          // wx.showToast({
+          //   title: '取消保存',
+          //   icon: 'none'
+          // })
+        }
+      })
+    },
+    
+    isTouchMove () {
+
+    },
+  },
+
 
 })
