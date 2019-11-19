@@ -2,6 +2,8 @@
 
 个人基于**canvasdrawer**修改的小程序canvas组件库。解决原库**不能准确调整多行文本的高度**的问题。简化了传递方式，无需传递top、left、width、height，并新增了圆形头像、虚线方框的绘制选项，以及对文本背景色、设置文本内边距、图片圆角等的支持。
 
+**除此之外，一并封装了获取了海报图片后的展示逻辑、保存海报的按钮及其权限开关的逻辑，免去开发者进行多余的逻辑处理。（可关闭）**
+
 **注意： 开发者工具必须开启增强编译功能。**
 
 ## 使用
@@ -23,15 +25,18 @@
 - 在页面 `**.wxml` 文件中加入如下代码
 
   ```
-  <xcxCanvas painting="{{painting}}" bind:getImage="eventGetImage"/>
+  <xcxCanvas painting="{{painting}}"/>
   ```
 
-  **使用时，先将文本/图片渲染到wxml上，然后可传递一个json对象给painting，即可在该组件的bind:getImage中的e.detail.tempFilePath获取绘制完成的图片地址。**
+  **使用时，先将文本/图片渲染到wxml上，然后可传递一个json对象给painting即可，生成图片的处理已在封装中。**
   生成的画布图片里各元素的布局与wxml中元素的布局一致（多行文本可能会适当调整高度）。
 
-  
+  **注意点：**
 
--  `painting` 简单展示一个例子：
+  1. 多个不同样式的文本拼凑成一行时，可能需要调整字体以解决间距（目前待优化项）。
+  2. **`views`数组的首个元素的`className`必须是`rect`类型的包含所有渲染元素的组件的类名，因为它的宽高将成为画布的宽高。**
+
+- `painting` 简单展示一个例子：
 
   ```javascript
   {
@@ -40,25 +45,29 @@
       getTextHeight: true,
       views: [
           {
+              type: 'rect',
+              className: '.my-box',
+  		},
+          {
               type: 'text',
-              className: 'my-content',
+              className: '.my-content',
               content: '这是需要换行的测试文本。这是需要换行的测试文本。这是需要换行的测试文本。这是需要换行的测试文本。这是需要换行的测试文本。',
               getTextHeight: true,
   		},
           {
               type: 'text',
-              className: 'my-one-line-content',
+              className: '.my-one-line-content',
               content: '这是不需换行的测试文本。',
   		},
           {
               type: 'image',
-              className: 'my-image',
+              className: '.my-image',
               url: '',
               borderRadius: 5,
   		},
           {
               type: 'rect',
-              className: 'my-rect',
+              className: '.my-rect',
               url: '',   //自己选一张
               borderRadius: 5,
   		},
@@ -67,6 +76,20 @@
   ```
 
   
+
+## 属性
+
+**hasSaveButton**: 是否有保存海报的按钮及其相关逻辑，默认true.
+
+**buttonStyle**: 保存海报的按钮样式.
+
+**promptStyle**: 提示框的标题样式.
+
+**contentStyle**: 提示框的内容样式.
+
+**confirmStyle**: 提示框的确定按钮样式.
+
+
 
 ## API
 
@@ -124,6 +147,7 @@
 | background      | 背景颜色                   | black        |        |
 
 ### avatar (圆形头像)
+
 **注意：对应的wxml中的image组件，mode属性必须设为 `mode="widthFix"`, 且宽度必须设为圆形头像的直径，高度不能设置。**
 
 | 属性               | 含义                                                 | 默认值      | 可选值 |
@@ -136,7 +160,5 @@
 | borderColor        | 头像边框的颜色                                       | transparent |        |
 
 # 参考
-
-绘制建议可参考原库的说明，与之类似。
 
 原库链接：[mp_canvas_drawer](https://github.com/kuckboy1994/mp_canvas_drawer#%E4%BD%BF%E7%94%A8)
