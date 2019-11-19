@@ -370,6 +370,7 @@ Component({
         paddingTop = 0,
         paddingBottom = 0,
         height,
+        getTextHeight,
       } = params
       if (backgroundColor && backgroundColor !== 'transparent' && this.canDraw) {
         // console.log('画背景色');
@@ -403,58 +404,64 @@ Component({
         !this.canDraw && console.log('width :', width);
         let actualWidth = this.isIOS ? width: Math.ceil(375 * width / this.data.width);
         !this.canDraw && console.log('actualWidth :', actualWidth);
-        for (let i = 0; i < content.length; i++) {
-          let nextText = fillText + [content[i]];
-          let nextWidth = this.ctx.measureText(nextText).width;
-          let nowWidth = this.ctx.measureText(fillText).width;
-          if (nextWidth > (actualWidth) || content.charCodeAt(i) === 10) {
-            !this.canDraw && console.log('nextWidth:', nextWidth, 'nowWidth:', nowWidth);
-            if (lineNum === MaxLineNumber) {
-                let omitText = fillText + '...';
-                let omitWidth = this.ctx.measureText(omitText).width;
-                let oneOmitText = fillText.substring(0, fillText.length - 1) + '...';
-                let oneOmitWidth = this.ctx.measureText(oneOmitText).width;
-                let twoOmitText = fillText.substring(0, fillText.length - 2) + '...';
-                let twoOmitWidth = this.ctx.measureText(twoOmitText).width;
-                let threeOmitText = fillText.substring(0, fillText.length - 3) + '...';
-                let threeOmitWidth = this.ctx.measureText(threeOmitText).width;
-                let fourOmitText = fillText.substring(0, fillText.length - 4) + '...';
-                fillText =
-                omitWidth < actualWidth ? omitText : (
-                  oneOmitWidth < actualWidth ? oneOmitText : (
-                    twoOmitWidth < actualWidth ? twoOmitText : (
-                      threeOmitWidth < actualWidth ? threeOmitText : fourOmitText
+        if (getTextHeight) {
+          //需要换行      
+          for (let i = 0; i < content.length; i++) {
+            let nextText = fillText + [content[i]];
+            let nextWidth = this.ctx.measureText(nextText).width;
+            let nowWidth = this.ctx.measureText(fillText).width;
+            if (nextWidth > (actualWidth) || content.charCodeAt(i) === 10) {
+              !this.canDraw && console.log('nextWidth:', nextWidth, 'nowWidth:', nowWidth);
+              if (lineNum === MaxLineNumber) {
+                  let omitText = fillText + '...';
+                  let omitWidth = this.ctx.measureText(omitText).width;
+                  let oneOmitText = fillText.substring(0, fillText.length - 1) + '...';
+                  let oneOmitWidth = this.ctx.measureText(oneOmitText).width;
+                  let twoOmitText = fillText.substring(0, fillText.length - 2) + '...';
+                  let twoOmitWidth = this.ctx.measureText(twoOmitText).width;
+                  let threeOmitText = fillText.substring(0, fillText.length - 3) + '...';
+                  let threeOmitWidth = this.ctx.measureText(threeOmitText).width;
+                  let fourOmitText = fillText.substring(0, fillText.length - 4) + '...';
+                  fillText =
+                  omitWidth < actualWidth ? omitText : (
+                    oneOmitWidth < actualWidth ? oneOmitText : (
+                      twoOmitWidth < actualWidth ? twoOmitText : (
+                        threeOmitWidth < actualWidth ? threeOmitText : fourOmitText
+                      )
                     )
                   )
-                )
-                this.ctx.fillText(fillText, left, fillTop)
-                this.drawTextLine(left, fillTop, textDecoration, color, fontSize, fillText)
-                fillText = ''
-                break
-            }
-            if (this.canDraw) {
-              //正式画图
-              this.ctx.fillText(fillText, left, fillTop);
-              this.drawTextLine(left, fillTop, textDecoration, color, fontSize, fillText);
-            }
-            if (nextWidth > (actualWidth) && content.charCodeAt(i) === 10) {
-              //ios实测一例，content.charCodeAt(i) === 10时不占宽度，即不存在此情况，安卓未知
-              console.log('换行+超出宽度')
-            }
-            fillText = (content.charCodeAt(i) === 10)? '': content[i];
-            if (!(
-              (i == content.length - 1) && (fillText == '' || content.charCodeAt(i) === 32)
-              )) {
-              //如果是最后一个字符且是(换行/空格)字符，则忽略
-              fillTop += lineHeight
-              lineNum++
+                  this.ctx.fillText(fillText, left, fillTop)
+                  this.drawTextLine(left, fillTop, textDecoration, color, fontSize, fillText)
+                  fillText = ''
+                  break
+              }
+              if (this.canDraw) {
+                //正式画图
+                this.ctx.fillText(fillText, left, fillTop);
+                this.drawTextLine(left, fillTop, textDecoration, color, fontSize, fillText);
+              }
+              if (nextWidth > (actualWidth) && content.charCodeAt(i) === 10) {
+                //ios实测一例，content.charCodeAt(i) === 10时不占宽度，即不存在此情况，安卓未知
+                console.log('换行+超出宽度')
+              }
+              fillText = (content.charCodeAt(i) === 10)? '': content[i];
+              if (!(
+                (i == content.length - 1) && (fillText == '' || content.charCodeAt(i) === 32)
+                )) {
+                //如果是最后一个字符且是(换行/空格)字符，则忽略
+                fillTop += lineHeight
+                lineNum++
+              } else {
+                console.log(fillText == ''? '最后一个字符是换行字符': '最后一个字符是空格字符');
+              }
             } else {
-              console.log(fillText == ''? '最后一个字符是换行字符': '最后一个字符是空格字符');
+              fillText += [content[i]]
             }
-          } else {
-            fillText += [content[i]]
           }
-        }
+        } else {
+          //单行，确保能完整展示
+          fillText = content;
+        }  
         if (!this.canDraw) {
           //返回文本高度
           let textClass = className[0] == '.' ? (className.slice(1)): className;
@@ -464,6 +471,11 @@ Component({
             this.returnHeightList()
           }
         } else {
+          if (textAlign == 'center') {
+            // let widthDifference = (this.ctx.measureText(content).width - actualWidth) /2;
+            // console.log('widthDifference :', widthDifference);
+            left = left + actualWidth / 2;
+          }
           this.ctx.fillText(fillText, left, fillTop);
           this.drawTextLine(left, fillTop, textDecoration, color, fontSize, fillText)
         }
@@ -698,6 +710,7 @@ Component({
         paddingTop = 0,
         bolder = false,
         paddingBottom = 0,
+        textAlign = 'left',
       } = params;
       console.log('bolder :', bolder);
       var { width, height, top, left } = await _getDomInfo(className);
@@ -706,7 +719,7 @@ Component({
         content,
         fontSize,
         lineHeight,
-        textAlign: 'left',
+        textAlign,
         top,
         left,
         MaxLineNumber,
