@@ -1,1 +1,23 @@
 <canvas canvas-id="xcxCanvas" style="width:{{width}}px;height:{{height}}px;" class="board" wx:if="{{showCanvas}}"></canvas>
+  <canvas canvas-id="xcxCanvas" style="width:{{width}}px;height:{{height}}px;" class="board" wx:if="{{showCanvas}}"></canvas>
+  <view class="whole">
+    <image class="canvasImage" wx:if="{{posterImage}}" mode="widthFix" src="{{posterImage}}" bindtap="previewImg"></image>
+    <view wx:if="hasSaveButton">
+      <view class="btn-place"></view>
+      
+      <button wx:if="{{posterImage}}" class="release-button flex-b-cc" style="{{buttonStyle}}" catchtap="savePoster" catchmove>保存海报</button>
+      <view wx:if="{{isOpenSetting}}" class="poster-prompt-container" catchtouchmove="isTouchMove">
+        <view class="fuzzy"></view>
+        <view class="poster-prompt a-c" style="{{promptStyle}}">
+          <view class="poster-prompt-title flex-b-cc">
+            提示
+            <image class="poster-top-close" catchtap="cancel" src="./close.png"></image>
+          </view>
+          <view class="poster-prompt-text flex-b-cc" style="{{contentStyle}}">您需要重新打开保存图片的权限</view>
+          <view class="poster-button-box flex-b-cc">
+            <button class="poster-confirm flex-b-cc" style="{{confirmStyle}}" catchtap='openSetting'>确定</button>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
