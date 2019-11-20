@@ -2,7 +2,7 @@
   <canvas canvas-id="xcxCanvas" style="width:{{width}}px;height:{{height}}px;" class="board" wx:if="{{showCanvas}}"></canvas>
   <view class="whole">
     <image class="canvasImage" wx:if="{{posterImage}}" mode="widthFix" src="{{posterImage}}" bindtap="previewImg"></image>
-    <view wx:if="hasSaveButton">
+    <view wx:if="{{hasSaveButton}}">
       <view class="btn-place"></view>
       
       <button wx:if="{{posterImage}}" class="release-button flex-b-cc" style="{{buttonStyle}}" catchtap="savePoster" catchmove>保存海报</button>
