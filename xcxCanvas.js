@@ -2,8 +2,20 @@
 function _getDomInfo (selector) {
   return new Promise((resolve, reject) => {
     wx.createSelectorQuery().select(selector).boundingClientRect(function(res){
+      console.log('_getDomInfo', res, selector);
+      
       resolve(res)
     }).exec()
+  })
+}
+function _getImageInfo (url) {
+  return new Promise((resolve, reject) => {
+    wx.getImageInfo({
+      src: url,
+      success(res) {
+        resolve(res)
+      },
+    })
   })
 }
 
@@ -23,7 +35,7 @@ Component({
         if (!this.data.isPainting) {
           if (JSON.stringify(newVal) !== JSON.stringify(oldVal)) {
             if (newVal) {
-              this.getAllDomInfo()
+              this.getAllDomInfo();
             }
           } else {
             if (newVal && newVal.mode !== 'same') {
@@ -40,22 +52,26 @@ Component({
     },
     //保存按钮的样式
     buttonStyle: {
-      type: Object,
-      value: {},
+      type: String,
+      value: '',
     },
     contentStyle: {
-      type: Object,
-      value: {},
+      type: String,
+      value: '',
     },
     //提示框标题的样式
     promptStyle: {
-      type: Object,
-      value: {},
+      type: String,
+      value: '',
     },
     //提示框确定按钮的样式
     confirmStyle: {
-      type: Object,
-      value: {},
+      type: String,
+      value: '',
+    },
+    loadingTitle: {
+      type: String,
+      value: '生成海报中',
     },
   },
   data: {
@@ -70,10 +86,17 @@ Component({
   cache: {},
   ready () {
     wx.showLoading({
-      title: '生成海报中',
+      title: this.data.loadingTitle,
       mask: true
     })
     let that = this;
+    this.concatListObj = {};   //key的值为文本views对象的数组
+    this.concatObj = {};   //key的值为总文本
+    this.concatingObj = {};   //key的值为拼接中的文本
+    this.concatingWidth = {};   //key的值为拼接中的文本宽度
+    this.concatTextWidth = {};   //key的值为拼接完成的文本宽度
+
+    this.concatWidth = {};  //key的值为传过来的总区域宽度
     wx.getSetting({
       success (res) {
         let obj = res.authSetting;
@@ -120,6 +143,8 @@ Component({
           return _promise(this.getAvatar(item))
         case 'lineDashRect':
           return _promise(this.getLineDashRect(item))
+        case 'custom':
+          return item
         default:
           return undefined
       }
@@ -128,7 +153,7 @@ Component({
     getAllDomInfo () {
       this.setData({
         showCanvas: true,
-        isPainting: true
+        isPainting: true,
       })
       let {
         fontSize = null,
@@ -140,7 +165,6 @@ Component({
 
       this.fontSize = fontSize;
       this.lineHeight = lineHeight;
-      console.log('fontSize--- :', fontSize);
 
       if (!this.canDraw) {
         //注意：有换行文本,需要获取文本高度
@@ -166,11 +190,23 @@ Component({
         getTextHeight = false,
       } = this.data.painting;
       Promise.all(
-        views.map(item => this.tomMatchType(item))
+        views.map(item => {
+          return this.tomMatchType(item);
+        })
       )
       .then((list) => {
-        !this.canDraw && (this.textList = list.slice(1))
-        console.log('list :', list);
+        if (JSON.stringify(this.concatListObj) != '{}') {
+          // console.log('this.concatListObj :', this.concatListObj);
+          let keyList = Object.keys(this.concatListObj);
+          keyList.map(item => {
+            this.concatListObj[item].map(childItem => {
+              this.getConcatTextWidth(childItem)
+            })
+          });
+        }
+        // console.log('this.concatTextWidth :', this.concatTextWidth);
+        !this.canDraw && (this.textList = list.slice(1));
+        // console.log('list :', list);
         this.painting = {
           width: list[0].width,
           height: list[0].height,
@@ -255,7 +291,12 @@ Component({
       let { tempFileList } = this.data;
       let { views } = this.painting;
       for (let i = 0, imageIndex = 0; i < views.length; i++) {
-        if (views[i].type === 'image') {
+        if (views[i].type === 'custom') {
+          this.customFunc({
+            ...views[i],
+          })
+          imageIndex++
+        } else if (views[i].type === 'image') {
           this.drawImage({
             ...views[i],
             url: tempFileList[imageIndex]
@@ -299,9 +340,80 @@ Component({
         })
       }
     },
+
+    getConcatTextWidth (params) {
+      console.log('params-- :', params);
+      this.ctx.save();
+      var {
+        // color = 'black',
+        content = '',
+        fontSize = this.fontSize,
+        top = 0,
+        left = 0,
+        lineHeight = this.lineHeight,
+        textAlign = 'left',
+        width,
+        bolder = false,
+        textDecoration = 'none',
+        backgroundColor = 'transparent',
+        className,
+        paddingLeft = 0,
+        paddingRight = 0,
+        paddingTop = 0,
+        height,
+        getTextHeight,
+        concatKey,
+      } = params
+      top += paddingTop;
+      left += paddingLeft;
+      width = width - paddingLeft - paddingRight;
+      lineHeight = lineHeight ? lineHeight : (this.lineHeight || 23);
+      fontSize = fontSize ? fontSize : (this.fontSize || 13);
+
+      this.ctx.beginPath()
+      this.ctx.setTextBaseline('top')
+      if (bolder) {
+        this.ctx.font = `normal bold ${fontSize}px sans-serif`;
+      } else {
+        this.ctx.setFontSize(fontSize);
+      }
+      this.ctx.setTextAlign(textAlign);
+      // this.ctx.setFillStyle(color);
+
+      let contentWidth = this.ctx.measureText(content).width;
+      console.log('contentWidth :', contentWidth);
+      this.concatTextWidth[concatKey] = (this.concatTextWidth[concatKey] || 0) + contentWidth;
+      
+      this.ctx.restore()
+    },
+
+    customFunc (params) {
+      //自定义方法，自己处理逻辑，兼顾不兼容的情况
+      this.ctx.save();
+      let {
+        customFunction = () => {}
+      } = params;
+      customFunction(this.ctx);
+      this.ctx.restore();
+    },
+
+    toDrawImage(params) {
+      const { url, top = 0, left = 0, width = 0, height = 0, borderRadius = 0, deg = 0, proportion = 1, resizeMode = false } = params
+      if (resizeMode) {
+        if (proportion > width/height) {
+          this.ctx.drawImage(url, left-(height*proportion - width)/2, top, proportion*height, height); //调整后要展示的图片新尺寸的‘左坐标、上坐标、宽、高’
+        } else {
+          this.ctx.drawImage(url, left, top - (width/proportion - height), width, width/proportion)
+        }
+      } else {
+        this.ctx.drawImage(url, left, top, width, height)
+      }
+    },
+    
     drawImage (params) {
       this.ctx.save()
-      const { url, top = 0, left = 0, width = 0, height = 0, borderRadius = 0, deg = 0 } = params
+      const { url, top = 0, left = 0, width = 0, height = 0, borderRadius = 0, deg = 0, proportion = 1, resizeMode = false } = params
+
       if (borderRadius) {
         this.ctx.beginPath()
         this.ctx.arc(left + borderRadius, top + borderRadius, borderRadius, 1 * Math.PI, 1.5 * Math.PI);
@@ -312,23 +424,34 @@ Component({
         this.ctx.lineTo(left + borderRadius, top + height);
         this.ctx.arc(left + borderRadius, top + height - borderRadius, borderRadius, 0.5 * Math.PI, 1 * Math.PI);
         this.ctx.lineTo(left, top + borderRadius);
-        this.ctx.clip()
-        this.ctx.drawImage(url, left, top, width, height)
+        this.ctx.clip();
+
+        this.toDrawImage(params);
       } else {
-      if (deg !== 0) {
-        this.ctx.translate(left + width/2, top + height/2)
-        this.ctx.rotate(deg * Math.PI / 180)
-        this.ctx.drawImage(url, -width/2, -height/2, width, height)
-      } else {
-        this.ctx.drawImage(url, left, top, width, height)
-      }
+        if (deg !== 0) {
+          this.ctx.translate(left + width/2, top + height/2)
+          this.ctx.rotate(deg * Math.PI / 180)
+          this.ctx.drawImage(url, -width/2, -height/2, width, height)
+        } else {
+          this.ctx.beginPath()
+          this.ctx.moveTo(left, top);
+          this.ctx.lineTo(left + width, top);
+          this.ctx.lineTo(left + width, top + height);
+          this.ctx.lineTo(left, top + height);
+          this.ctx.lineTo(left, top);
+          this.ctx.clip();
+
+          this.toDrawImage(params);
+        }
       }
       this.ctx.restore()
     },
 
     drawCircleAvatar (params) {
       this.ctx.save()
-      const { url, top = 0, left = 0, width = 0, height = 0, borderColor = 'transparent', borderSpacing = 0, borderSpacingColor = 'transparent', } = params
+      const { url, top = 0, left = 0, width = 0, height = 0, borderColor = 'transparent', borderSpacing = 0, borderSpacingColor = 'transparent',  proportion = 1, resizeMode = true } = params
+      // console.log("drawCircleAvatar", params);
+      
       if (borderColor != 'transparent' || borderSpacingColor != 'transparent') {
         this.ctx.beginPath();
         this.ctx.arc(width / 2 + left, top + width / 2, width / 2 + borderSpacing, 0, 2*Math.PI)
@@ -338,13 +461,16 @@ Component({
         this.ctx.stroke();
       }
       this.ctx.beginPath()
-      this.ctx.arc(width / 2 + left, top + width / 2, width / 2, 0, 2*Math.PI)
+      this.ctx.arc(width / 2 + left, top + height/2, width / 2, 0, 2*Math.PI)
       this.ctx.clip()
-      if (width > height) {
-        this.ctx.drawImage(url, left-(width-height)*width/2/height, top, width*width/height, width) //调整后要展示的图片新尺寸的‘左坐标、上坐标、宽、高’
-      } else {
-        this.ctx.drawImage(url, left, top-(height-width)/2, width, height)
-      }
+
+      this.toDrawImage(params);
+
+      // if (width > height) {
+      //   this.ctx.drawImage(url, left-(width-height)*width/2/height, top + (height - width)/2, width*width/height, width) //调整后要展示的图片新尺寸的‘左坐标、上坐标、宽、高’
+      // } else {
+      //   this.ctx.drawImage(url, left, top-(height-width)/2, width, height)
+      // }
       this.ctx.restore();
     },
 
@@ -371,9 +497,9 @@ Component({
         paddingBottom = 0,
         height,
         getTextHeight,
-      } = params
+        concatKey,
+      } = params;
       if (backgroundColor && backgroundColor !== 'transparent' && this.canDraw) {
-        // console.log('画背景色');
         this.ctx.setFillStyle(backgroundColor);
         this.ctx.fillRect(left, top, width, height);
       }
@@ -382,7 +508,7 @@ Component({
       width = width - paddingLeft - paddingRight;
       lineHeight = lineHeight ? lineHeight : (this.lineHeight || 23);
       fontSize = fontSize ? fontSize : (this.fontSize || 13);
-      !this.canDraw && console.log('MaxLineNumber :', MaxLineNumber);
+      // !this.canDraw && console.log('MaxLineNumber :', MaxLineNumber);
 
       this.ctx.beginPath()
       this.ctx.setTextBaseline('top')
@@ -393,6 +519,7 @@ Component({
       }
       this.ctx.setTextAlign(textAlign);
       this.ctx.setFillStyle(color);
+
       // if (!breakWord) {
       //   this.ctx.fillText(content, left, top);
       //   this.drawTextLine(left, top, textDecoration, color, fontSize, content);
@@ -401,39 +528,39 @@ Component({
         let fillTop = top + (lineHeight - fontSize)/2;
         let lineNum = 1;
 
-        !this.canDraw && console.log('width :', width);
+        // !this.canDraw && console.log('width :', width);
         let actualWidth = this.isIOS ? width: Math.ceil(375 * width / this.data.width);
-        !this.canDraw && console.log('actualWidth :', actualWidth);
+        // !this.canDraw && console.log('actualWidth :', actualWidth);
+
         if (getTextHeight) {
-          //需要换行      
+          //需要换行
           for (let i = 0; i < content.length; i++) {
             let nextText = fillText + [content[i]];
             let nextWidth = this.ctx.measureText(nextText).width;
             let nowWidth = this.ctx.measureText(fillText).width;
             if (nextWidth > (actualWidth) || content.charCodeAt(i) === 10) {
-              !this.canDraw && console.log('nextWidth:', nextWidth, 'nowWidth:', nowWidth);
               if (lineNum === MaxLineNumber) {
-                  let omitText = fillText + '...';
-                  let omitWidth = this.ctx.measureText(omitText).width;
-                  let oneOmitText = fillText.substring(0, fillText.length - 1) + '...';
-                  let oneOmitWidth = this.ctx.measureText(oneOmitText).width;
-                  let twoOmitText = fillText.substring(0, fillText.length - 2) + '...';
-                  let twoOmitWidth = this.ctx.measureText(twoOmitText).width;
-                  let threeOmitText = fillText.substring(0, fillText.length - 3) + '...';
-                  let threeOmitWidth = this.ctx.measureText(threeOmitText).width;
-                  let fourOmitText = fillText.substring(0, fillText.length - 4) + '...';
-                  fillText =
-                  omitWidth < actualWidth ? omitText : (
-                    oneOmitWidth < actualWidth ? oneOmitText : (
-                      twoOmitWidth < actualWidth ? twoOmitText : (
-                        threeOmitWidth < actualWidth ? threeOmitText : fourOmitText
-                      )
+                let omitText = fillText + '...';
+                let omitWidth = this.ctx.measureText(omitText).width;
+                let oneOmitText = fillText.substring(0, fillText.length - 1) + '...';
+                let oneOmitWidth = this.ctx.measureText(oneOmitText).width;
+                let twoOmitText = fillText.substring(0, fillText.length - 2) + '...';
+                let twoOmitWidth = this.ctx.measureText(twoOmitText).width;
+                let threeOmitText = fillText.substring(0, fillText.length - 3) + '...';
+                let threeOmitWidth = this.ctx.measureText(threeOmitText).width;
+                let fourOmitText = fillText.substring(0, fillText.length - 4) + '...';
+                fillText =
+                omitWidth < actualWidth ? omitText : (
+                  oneOmitWidth < actualWidth ? oneOmitText : (
+                    twoOmitWidth < actualWidth ? twoOmitText : (
+                      threeOmitWidth < actualWidth ? threeOmitText : fourOmitText
                     )
                   )
-                  this.ctx.fillText(fillText, left, fillTop)
-                  this.drawTextLine(left, fillTop, textDecoration, color, fontSize, fillText)
-                  fillText = ''
-                  break
+                )
+                this.ctx.fillText(fillText, left, fillTop)
+                this.drawTextLine(left, fillTop, textDecoration, color, fontSize, fillText)
+                fillText = ''
+                break
               }
               if (this.canDraw) {
                 //正式画图
@@ -461,7 +588,7 @@ Component({
         } else {
           //单行，确保能完整展示
           fillText = content;
-        }  
+        }
         if (!this.canDraw) {
           //返回文本高度
           let textClass = className[0] == '.' ? (className.slice(1)): className;
@@ -471,27 +598,46 @@ Component({
             this.returnHeightList()
           }
         } else {
-          if (textAlign == 'center') {
-            // let widthDifference = (this.ctx.measureText(content).width - actualWidth) /2;
-            // console.log('widthDifference :', widthDifference);
+          //完成文本绘制
+
+          if (concatKey != '') {
+            //需要拼接文本
+
+            //TODO: 新增单行文本存在不同样式的拼接处理
+            let lineContent = this.concatObj[concatKey];
+            let lineWidth = this.concatWidth[concatKey];          //内容区域宽度
+            let textWidth = this.concatTextWidth[concatKey];      //内容宽度
+            actualWidth = this.isIOS ? lineWidth: Math.ceil(375 * lineWidth / this.data.lineWidth);
+            let {
+              width: canvasWidth,
+            } = this.data;
+            let contentWidth = this.ctx.measureText(content).width;
+
+            this.concatingObj[concatKey] = (this.concatingObj[concatKey] || '');
+            let concatingWidth = this.concatingWidth[concatKey] ? this.concatingWidth[concatKey]: 0;
+            this.concatingWidth[concatKey] = concatingWidth;
+            if (textAlign == 'center') {
+              left = (canvasWidth - textWidth) / 2 + concatingWidth + contentWidth / 2;
+              this.concatingWidth[concatKey] += contentWidth;
+
+            } else {
+              this.left = concatingWidth ? this.left : left;  //this.left为当前文本准确左定位
+              left = this.left;
+              this.left += contentWidth;
+              this.concatingWidth[concatKey] += contentWidth;
+            }
+
+          } else if (textAlign == 'center') {
+            let widthDifference = (this.ctx.measureText(content).width - actualWidth) /2;
+            // left -= widthDifference
             left = left + actualWidth / 2;
           }
           this.ctx.fillText(fillText, left, fillTop);
-          this.drawTextLine(left, fillTop, textDecoration, color, fontSize, fillText)
+          this.drawTextLine(left, fillTop, textDecoration, color, fontSize, fillText);
         }
       // }
       
       this.ctx.restore()
-
-      // if (bolder) {
-      //   this.drawText({
-      //     ...params,
-      //     left: left + 0.3,
-      //     top: top + 0.3,
-      //     bolder: false,
-      //     textDecoration: 'none' 
-      //   })
-      // }
     },
 
     returnHeightList () {
@@ -537,7 +683,7 @@ Component({
     drawRect (params) {
       this.ctx.save()
       const { background, top = 0, left = 0, width = 0, height = 0 } = params
-      console.log('background :', background);
+      // console.log('background :', background);
       this.ctx.setFillStyle(background)
       this.ctx.fillRect(left, top, width, height)
       this.ctx.restore()
@@ -658,8 +804,16 @@ Component({
         className,
         url = '',
         borderRadius = 0,
+        resizeMode = false,
       } = params;
+      console.log(className);
+      
       var { width, height, top, left } = await _getDomInfo(className);
+      let proportion = 1;
+      if (resizeMode) {
+        var { width: actualWidth, height: actualHeight } = await _getImageInfo(url);
+        proportion = actualWidth/actualHeight;
+      }
       return {
         type: 'image',
         className,
@@ -669,6 +823,8 @@ Component({
         width,
         height,
         borderRadius,
+        proportion,    // 宽高比
+        resizeMode
       }
     },
 
@@ -681,6 +837,8 @@ Component({
         borderSpacingColor = 'transparent',
       } = params;
       var { width, height, top, left } = await _getDomInfo(className);
+      var { width: actualWidth, height: actualHeight } = await _getImageInfo(url);
+      let proportion = actualWidth/actualHeight;
       return {
         type: 'avatar',
         className,
@@ -692,6 +850,8 @@ Component({
         borderColor,
         borderSpacing,
         borderSpacingColor,
+        proportion,
+        resizeMode: true,
       }
     },
 
@@ -709,11 +869,16 @@ Component({
         paddingRight = 0,
         paddingTop = 0,
         bolder = false,
-        paddingBottom = 0,
         textAlign = 'left',
+        paddingBottom = 0,
+        concatKey = '',
       } = params;
-      console.log('bolder :', bolder);
       var { width, height, top, left } = await _getDomInfo(className);
+      if (concatKey) {
+        this.concatListObj[concatKey] = [...(this.concatListObj[concatKey] || []), params];
+        this.concatObj[concatKey] = (this.concatObj[concatKey] || '') + content;
+        this.concatWidth[concatKey] = (this.concatWidth[concatKey] || 0) + width;
+      }
       return {
         type: 'text',
         content,
@@ -735,6 +900,7 @@ Component({
         paddingBottom,
         color: color ? color : '#000',
         breakWord: true,
+        concatKey,
       }
     },
 
