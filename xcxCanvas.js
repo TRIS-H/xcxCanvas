@@ -1,9 +1,7 @@
 /* global Component wx */
 function _getDomInfo (selector) {
   return new Promise((resolve, reject) => {
-    wx.createSelectorQuery().select(selector).boundingClientRect(function(res){
-      console.log('_getDomInfo', res, selector);
-      
+    wx.createSelectorQuery().select(selector).boundingClientRect(function(res){      
       resolve(res)
     }).exec()
   })
@@ -121,8 +119,8 @@ Component({
         let obj = res.authSetting;
         that.isRefused = (Object.keys(obj).length > 0 && obj['scope.writePhotosAlbum'] == false) ? true : false;
         that.canSave = (Object.keys(obj).length > 0 && obj['scope.writePhotosAlbum'] == true) ? true : false;
-        console.log('保存图片的权限是否被禁止 :', that.isRefused);
-        console.log('是否开启保存图片权限 :', that.canSave);
+        // console.log('保存图片的权限是否被禁止 :', that.isRefused);
+        // console.log('是否开启保存图片权限 :', that.canSave);
         that.setData({
           isRefused: that.isRefused,
           canSave: that.canSave
@@ -342,7 +340,6 @@ Component({
     },
 
     getConcatTextWidth (params) {
-      console.log('params-- :', params);
       this.ctx.save();
       var {
         // color = 'black',
@@ -381,7 +378,6 @@ Component({
       // this.ctx.setFillStyle(color);
 
       let contentWidth = this.ctx.measureText(content).width;
-      console.log('contentWidth :', contentWidth);
       this.concatTextWidth[concatKey] = (this.concatTextWidth[concatKey] || 0) + contentWidth;
       
       this.ctx.restore()
@@ -741,7 +737,7 @@ Component({
         height,
         canvasId: 'xcxCanvas',
         complete: res => {
-          console.log('ressaveImageToLocal :', res);
+          // console.log('ressaveImageToLocal :', res);
           if (res.errMsg === 'canvasToTempFilePath:ok') {
             this.setData({
               showCanvas: false,
@@ -806,7 +802,7 @@ Component({
         borderRadius = 0,
         resizeMode = false,
       } = params;
-      console.log(className);
+      // console.log(className);
       
       var { width, height, top, left } = await _getDomInfo(className);
       let proportion = 1;
@@ -917,7 +913,7 @@ Component({
       let that = this;
       wx.openSetting({
         success (res) {
-          console.log("res", res.authSetting)
+          // console.log("res", res.authSetting)
           that.setData({
             isRefused: !res.authSetting['scope.writePhotosAlbum'],
             canSave: res.authSetting['scope.writePhotosAlbum'],  //拒绝后下次也能保存图片
@@ -942,7 +938,7 @@ Component({
         this.setData({
           isOpenSetting: true
         }, () => {
-          console.log('this.data.isOpenSetting :', this.data.isOpenSetting);
+          // console.log('this.data.isOpenSetting :', this.data.isOpenSetting);
         })
         return
       }
@@ -955,7 +951,7 @@ Component({
           })
         },
         fail: (e) => {
-          console.log('e :', e);
+          // console.log('e :', e);
           that.setData({
             isRefused: true,
           })
