@@ -1,10 +1,10 @@
 # xcxCanvas
 
-个人基于**canvasdrawer**修改的小程序canvas组件库。解决原库**不能准确调整多行文本的高度**的问题。简化了传递方式，无需传递top、left、width、height，并新增了圆形头像、虚线方框的绘制选项，以及对文本背景色、设置文本内边距、图片圆角等的支持。
+个人基于**canvasdrawer**修改的小程序canvas组件库。解决原库**不能准确调整多行文本的高度、单行文本居中、单行文本出现不同文本样式、图片受挤压**的问题。简化了传递方式，无需传递top、left、width、height，并新增了圆形头像、虚线方框的绘制选项，以及对文本背景色、设置文本内边距、图片圆角等的支持。
 
 **除此之外，一并封装了获取了海报图片后的展示逻辑、保存海报的按钮及其权限开关的逻辑，免去开发者进行多余的逻辑处理。（可关闭）**
 
-**注意： 开发者工具必须开启增强编译功能。**
+**注意： 开发者工具必须<span style='color:red'>开启增强编译</span>功能。**
 
 ## 使用
 
@@ -28,13 +28,13 @@
   <xcxCanvas painting="{{painting}}"/>
   ```
 
-  **使用时，先将文本/图片渲染到wxml上，然后可传递一个json对象给painting即可，生成图片的处理已在封装中。**
+  **使用时，先<span style='color:red'>确保已将文本/图片渲染到wxml上</span>，然后可传递一个json对象给painting即可，不需写其他逻辑，生成图片的完整过程处理已在封装中。**
   生成的画布图片里各元素的布局与wxml中元素的布局一致（多行文本可能会适当调整高度）。
 
   **注意点：**
 
   1. 多个不同样式的文本拼凑成一行时，可能需要调整字体以解决间距（目前待优化项）。
-  2. **`views`数组的首个元素的`className`必须是`rect`类型的包含所有渲染元素的组件的类名，因为它的宽高将成为画布的宽高。**
+  2. **`views`数组的<span style='color:red'>首个元素的`className`必须是`rect`类型的包含所有渲染元素的组件的类名</span>，因为它的宽高将成为画布的宽高。**
 
 - `painting` 简单展示一个例子：
 
@@ -47,7 +47,7 @@
           {
               type: 'rect',
               className: '.my-box',
-  		},
+  		},     //必传，将决定画布的宽高
           {
               type: 'text',
               className: '.my-content',
@@ -89,26 +89,29 @@
 
 **confirmStyle**: 提示框的确定按钮样式.
 
+**loadingTitle:** 海报生成loading过程中的提示文字，默认“生成海报中”.
+
 
 
 ## API
 
 <details style="box-sizing: border-box; display: block; margin-top: 0px; margin-bottom: 16px;"><summary style="box-sizing: border-box; display: list-item; cursor: pointer;">对象结构一览</summary></details>
 
-数据对象的第一层需要三个参数: `lineHeight`、`fontSize`、`getTextHeight`、`views`。配置中所有的数字都是没有单位的。
+数据对象的第一层需要三个参数: `lineHeight`、`fontSize`、`getTextHeight`、`views`。配置中所有的数字都是<span style='color:red'>没有单位</span>的。
 
-`lineHeight`、`fontSize`作用于全部字体，`getTextHeight`为true代表需要文本换行或需要n行省略，`views`是包含对象的数组。
+`lineHeight`、`fontSize`作用于全部字体，`getTextHeight`为true代表需要<span style='color:red'>文本换行</span>或需要<span style='color:red'>n行省略（包括单行省略）</span>，`views`是包含对象的数组。
 
 当前可以绘制3种类型的配置: 文本`text`、图片`image`、矩形`rect`、虚线矩形框`lineDashRect`、圆形头像`avatar`。配置的属性使用的都是 `css` 的驼峰名称。
 
 ### image（图片）
 
-| 属性            | 含义                                                 | 默认值 | 可选值 |
-| --------------- | ---------------------------------------------------- | ------ | ------ |
-| type(必传)      | 类型                                                 | image  |        |
-| className(必传) | wxml中该image组件的独有类名                          |        |        |
-| url(必传)       | 绘制的图片地址，可以是本地图片，如：`/images/1.jpeg` |        |        |
-| borderRadius    | 图片圆角                                             | 0      |        |
+| 属性            | 含义                                                       | 默认值 | 可选值 |
+| --------------- | ---------------------------------------------------------- | ------ | ------ |
+| type(必传)      | 类型                                                       | image  |        |
+| className(必传) | wxml中该image组件的独有类名                                |        |        |
+| url(必传)       | 绘制的图片地址，可以是本地图片，如：`/images/1.jpeg`       |        |        |
+| borderRadius    | 图片圆角                                                   | 0      |        |
+| resizeMode      | 是否需要调整图片模式为aspectFill，false时模式为scaleToFill | false  |        |
 
 ### text（文本）
 
@@ -129,6 +132,8 @@
 | paddingRight    | 右内边距                                                     | 0              |                                             |
 | paddingBottom   | 下内边距                                                     | 0              |                                             |
 | paddingLeft     | 左内边距                                                     | 0              |                                             |
+| concatKey       | 单行文本存在不同文本样式时，它们需要分别传递相同的非空字符串concatKey | ""             |                                             |
+| textAlign       | 单行文本属性                                                 | left           | center/left/right                           |
 
 ### rect (矩形，线条)
 
@@ -148,8 +153,6 @@
 
 ### avatar (圆形头像)
 
-**注意：对应的wxml中的image组件，mode属性必须设为 `mode="widthFix"`, 且宽度必须设为圆形头像的直径，高度不能设置。**
-
 | 属性               | 含义                                                 | 默认值      | 可选值 |
 | ------------------ | ---------------------------------------------------- | ----------- | ------ |
 | type(必传)         | 类型                                                 | avatar      |        |
@@ -159,6 +162,6 @@
 | borderSpacingColor | 头像到边框的距离部分的颜色                           | transparent |        |
 | borderColor        | 头像边框的颜色                                       | transparent |        |
 
-# 参考
+# 原库参考
 
 原库链接：[mp_canvas_drawer](https://github.com/kuckboy1994/mp_canvas_drawer#%E4%BD%BF%E7%94%A8)
