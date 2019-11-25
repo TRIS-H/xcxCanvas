@@ -1,3 +1,11 @@
+<!--
+ * @Author: your name
+ * @Date: 2019-11-25 11:46:01
+ * @LastEditTime: 2019-11-25 14:22:40
+ * @LastEditors: your name
+ * @Description: In User Settings Edit
+ * @FilePath: \luwei-ecard-miniprogram\components\xcxCanvas\xcxCanvas.wxml
+ -->
  <view class="whole">
    <image class="canvasImage" wx:if="{{posterImage}}" mode="widthFix" src="{{posterImage}}" bindtap="previewImg"></image>
    <view wx:if="hasSaveButton">
@@ -5,7 +13,7 @@
      
      <button wx:if="{{posterImage}}" class="release-button flex-b-cc" style="{{buttonStyle}}" catchtap="savePoster" catchmove>保存海报</button>
      <view wx:if="{{isOpenSetting}}" class="poster-prompt-container" catchtouchmove="isTouchMove">
-       <view class="fuzzy"></view>
+       <view class="fuzzy" catchtouchmove="isTouchMove"></view>
        <view class="poster-prompt a-c" style="{{promptStyle}}">
           <view class="poster-prompt-title flex-b-cc">
             提示
